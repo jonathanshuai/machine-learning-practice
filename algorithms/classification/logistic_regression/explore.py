@@ -70,7 +70,7 @@ def scatterplot_matrix(df, features, kwargs, label='label'):
 
 #use our simple scatterplot matrix function
 kwargs = {'s':2, 'cmap':'winter'}
-scatterplot_matrix(df=df, features=features, kwargs=kwargs, label=label)
+#scatterplot_matrix(df=df, features=features, kwargs=kwargs, label=label)
 
 
 #Create the df that we want to try predicting on
@@ -80,6 +80,7 @@ df = df.dropna()
 labels = df[label]
 dff = df[features]
 
+#normalize the huge features
 dff = (dff - dff.mean()) / (dff.max() - dff.min())
 
 #Train and test sets
@@ -94,70 +95,108 @@ X = np.c_[b, X]
 b = np.ones(X_test.shape[0])
 X_test = np.c_[b, X_test] 
 
+
+#multinomial regression
 clf_multi = n_LogisticRegression(lam=1)
 clf_multi.fit(X, y)
 predictions = clf_multi.predict(X_test)
 acc = accuracy_score(y_test, predictions)
 print(acc)
 
-
+'''
 #for testing
 
-#def softmax(x):
-#  exp = np.exp(x - np.max(x))
-#  if exp.ndim==1:
-#    sm = exp / np.sum(exp)
-#  else:
-#    sm = exp / np.array([np.sum(exp, axis=1)]).T
-#  return sm
-#
-#def cross_entropy(s, l):
-#  return -np.sum(np.dot(np.log(s).T, l))
-#
-#def d_cross_entropy(x,y):
-#  grad = softmax(x) - y
-#  return grad
-#
-#def dd_cross_entropy(x):
-#  sT = softmax(x).T
-#  ss = np.zeros((len(sT), len(sT)))
-#  for i in range(len(sT)):
-#    for j in range(len(sT)):
-#      if i == j:
-#        ss[i][j] = np.dot(sT[i], 1-sT[j])
-#      else:
-#        ss[i][j] = -np.dot(sT[i], sT[j])
-#  return ss
-#
-#
-#le = LabelEncoder()
-#le.fit(y)
-#y_index = le.transform(y)
-#n_classes = len(le.classes_)
-#y = [[0]*n_classes for _ in y_index]
-#
-#for i in range(len(y_index)):
-#  y[i][y_index[i]] = 1
-#
-#
-#y = np.array(y)
-#
-#W = np.ones((len(X[1]), n_classes))
-#
-##Exploring
-#x = np.dot(X, W)
-#s = softmax(np.dot(X,W))
-#cross_entropy(softmax(np.dot(X, W)), y)
-#-np.dot(np.log(s).T, y).trace()
-#
-#
-#
-##Training
-#epsilon = 1e-2
-#W = np.ones((len(X[1]), n_classes))
-#
-#W += epsilon * np.dot(X.T, d_cross_entropy(np.dot(X, W), y))
-#
+def softmax(x):
+  exp = np.exp(x - np.max(x))
+  if exp.ndim==1:
+    sm = exp / np.sum(exp)
+  else:
+    sm = exp / np.array([np.sum(exp, axis=1)]).T
+  return sm
+
+def cross_entropy(s, l):
+  return -np.sum(np.dot(np.log(s).T, l))
+
+def d_cross_entropy(x,y):
+  grad = softmax(x) - y
+  return grad
+
+def dd_cross_entropy(x):
+  sT = softmax(x).T
+  ss = np.zeros((len(sT), len(sT)))
+  for i in range(len(sT)):
+    for j in range(len(sT)):
+      if i == j:
+        ss[i][j] = np.dot(sT[i], 1-sT[j])
+      else:
+        ss[i][j] = -np.dot(sT[i], sT[j])
+  return ss
+
+
+le = LabelEncoder()
+le.fit(y)
+y_index = le.transform(y)
+n_classes = len(le.classes_)
+y = [[0]*n_classes for _ in y_index]
+
+for i in range(len(y_index)):
+  y[i][y_index[i]] = 1
+
+
+y = np.array(y)
+
+W = np.ones((len(X[1]), n_classes))
+
+#Exploring
+x = np.dot(X, W)
+s = softmax(np.dot(X,W))
+cross_entropy(softmax(np.dot(X, W)), y)
+-np.dot(np.log(s).T, y).trace()
+
+#Training
+epsilon = 1e-2
+W = np.ones((len(X[1]), n_classes))
+
+grad = np.dot(X.T, d_cross_entropy(np.dot(X, W), y))
+W += epsilon * np.dot(X.T, d_cross_entropy(np.dot(X, W), y))
+
+
+W = np.ones(len(X[0]))
+y = y_index
+
+def sigmoid(x):
+  return 1/(1+np.exp(-x))
+
+Wx = np.dot(X, W)
+dl = np.dot(X.T, (y-1) + (1-sigmoid(Wx)) )
+
+Wx = np.dot(X, W)
+p = sigmoid(Wx)
+np.dot(p, 1-p) #Note that p is one dimensional here
+np.dot(X.T, X)
+'''
+
+from b_LogisticRegression import b_LogisticRegression
+
+
+clf = b_LogisticRegression(solver='lbfgs')
+clf.fit(X, y)
+p_lbfgs = clf.predict(X_test)
+w_lbfgs = clf.W
+
+
+clf = b_LogisticRegression(solver='newton-raphson')
+clf.fit(X, y)
+p_nr = clf.predict(X_test)
+w_nr = clf.W
+
+
+clf = b_LogisticRegression(solver='')
+clf.fit(X, y)
+p_d = clf.predict(X_test)
+w_d = clf.W
+
+
 ##Testing
 #y_test = le.transform(y_test)
 #x = np.dot(X_test, W)
