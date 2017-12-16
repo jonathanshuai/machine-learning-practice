@@ -10,12 +10,12 @@ from sklearn.preprocessing import LabelEncoder
 
 
 class b_LogisticRegression:
-  def __init__(self, lam=0, epsilon=1e-4, pgtol=1e-7, n_iters=1e5, solver='lbfgs'):
+  def __init__(self, lam=0, epsilon=1e-4, pgtol=1e-7, n_iters=1e6, solver='lbfgs'):
     self.epsilon = epsilon
     self.lam = lam
     self.n_iters = n_iters
     self.pgtol = pgtol
-    self.solver = 'lbfgs'
+    self.solver = solver
 
   def sigmoid(self, x):
     return 1/(1+np.exp(-x))
@@ -23,26 +23,29 @@ class b_LogisticRegression:
   #function to minimize (used for lbfgs)
   def f(self, W, X, y, lam):
     Wx = np.dot(X, W)
+    #np.exp(W)  np.exp(x)
     likelihood = (y-1)*Wx - np.log(1 + np.exp(-Wx))
     return -np.sum(likelihood)
 
   #derivative of function to minimize (used for lbfgs)
   def fprime(self, W, X, y, lam):
     Wx = np.dot(X, W)
-    dl = np.dot(X.T, (y-1) + (1-self.sigmoid(Wx)))
+    dl = np.dot(X.T, (y - self.sigmoid(Wx)))
     return -dl
 
 
   def gradient(self, W, X, y, lam):
     Wx = np.dot(X, W)
-    dl = np.dot(X.T, (y-1) + (1-self.sigmoid(Wx)))
+    dl = np.dot(X.T, (y - self.sigmoid(Wx)))
     return dl
 
-  def hessian(self, W, X, y, lam):
+  def hessian(self, W, X):
     Wx = np.dot(X, W)
     p = self.sigmoid(Wx)
-    w = np.dot(p, 1-p)
-    return - np.dot(X.T, np.dot(w, X))
+    w = p * (1 - p)
+    w = np.array([w]).T
+    XTw = (X * w).T
+    return -np.dot(XTw, X)
 
   #fit the data
   def fit(self, X, y):
@@ -61,6 +64,7 @@ class b_LogisticRegression:
 
     self.W = np.zeros(self.n_features_)  # initialize W 0
 
+    print("solving with {}...".format(self.solver))
     #use lbfgs solver
     if self.solver=='lbfgs': 
       self.W, _, _ = scipy.optimize.fmin_l_bfgs_b(\
@@ -78,15 +82,27 @@ class b_LogisticRegression:
   #use by specifying "newton-raphson" for solver
   def solve_newton_raphson(self, W, X, y, lam, n_iters, pgtol):
     iters = 0
+    p_0 = self.sigmoid(np.dot(X, W))
     while iters < n_iters:
+
       n_iters += 1
+
+      #Do Newton-Raphson update
       grad = self.gradient(W, X, y, lam)
-      hess = self.hessian(W, X, y, lam)
+      hess = self.hessian(W, X)
       update = np.dot(np.linalg.inv(hess), grad)
       W = W - update
-      if np.min(np.abs(update)) < pgtol:
+
+      #calculate error for convergence as the difference in probability
+      p_new = self.sigmoid(np.dot(X, W))
+      error = p_0 - p_new
+      if np.min(np.abs(error)) < pgtol:
         print("Reached convergence")
         return W
+
+      #Set new p_0
+      p_0 = p_new
+
     print("Reached maximum number of iterations")
     return W
 
@@ -96,7 +112,7 @@ class b_LogisticRegression:
     while iters < n_iters:
       iters += 1
       Wx = np.dot(X, W)
-      grad = np.dot(X, (y-1) + (1-sigmoid(Wx)) )
+      grad = np.dot(X, (y - sigmoid(Wx)) )
       W -= epsilon * (grad)
 
       if np.min(np.abs(grad)) < pgtol:
@@ -118,6 +134,8 @@ class b_LogisticRegression:
       else:
         y.append(0)
     return self.le.inverse_transform(y)
+
+
 
 
 
