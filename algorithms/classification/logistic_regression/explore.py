@@ -76,7 +76,7 @@ kwargs = {'s':2, 'cmap':'winter'}
 
 
 #Create the df that we want to try predicting on
-df = pd.concat([dinner_df, workout_df, sleep_df])
+df = pd.concat([dinner_df, workout_df])
 #df = pd.concat([dinner_df, workout_df])
 df = df.dropna()
 
